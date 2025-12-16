@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'kavia_todo_tasks_v1';
+const SORT_KEY = 'kavia_todo_sort_v1';
 
 /**
  * Returns a safe API base URL if provided via env; otherwise an empty string.
@@ -28,20 +29,76 @@ function saveLocal(tasks) {
   }
 }
 
+function loadSort() {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    return raw || 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+function saveSort(sortOption) {
+  try {
+    localStorage.setItem(SORT_KEY, sortOption);
+  } catch {
+    // ignore quota errors
+  }
+}
+
 function genId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
+ * Sorts tasks based on the selected sort option.
+ * Applied after filtering to maintain filter integrity.
+ */
+function sortTasks(tasks, sortOption) {
+  const sorted = [...tasks];
+  
+  switch (sortOption) {
+    case 'dueDate':
+      // Sort by due date (soonest first), tasks without due dates go to end
+      return sorted.sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      });
+    
+    case 'completedLast':
+      // Incomplete tasks first, then completed
+      return sorted.sort((a, b) => {
+        if (a.completed === b.completed) return 0;
+        return a.completed ? 1 : -1;
+      });
+    
+    case 'alphabetical':
+      // Sort alphabetically by text (case-insensitive)
+      return sorted.sort((a, b) => 
+        a.text.toLowerCase().localeCompare(b.text.toLowerCase())
+      );
+    
+    case 'default':
+    default:
+      // Default: maintain creation order (newest first as added to beginning)
+      return sorted;
+  }
+}
+
+/**
  * PUBLIC_INTERFACE
  * useTasks manages tasks with persistence to localStorage and optional API sync.
+ * Now supports optional dueDate field and sorting options.
  */
 export function useTasks() {
-  /** Provides tasks state and CRUD operations with filter support. */
+  /** Provides tasks state and CRUD operations with filter and sort support. */
   const apiEnabled = !!getBaseUrl();
 
   const [tasks, setTasks] = useState(() => loadLocal());
   const [filter, setFilter] = useState('all');
+  const [sortOption, setSortOption] = useState(() => loadSort());
   const [loading, setLoading] = useState(false);
 
   // Attempt to fetch initial tasks if API is provided. Graceful fallback to local.
@@ -74,17 +131,36 @@ export function useTasks() {
     saveLocal(tasks);
   }, [tasks]);
 
+  // Persist sort option to localStorage
+  useEffect(() => {
+    saveSort(sortOption);
+  }, [sortOption]);
+
   const filtered = useMemo(() => {
+    let result;
     switch (filter) {
-      case 'active': return tasks.filter(t => !t.completed);
-      case 'completed': return tasks.filter(t => t.completed);
-      default: return tasks;
+      case 'active': 
+        result = tasks.filter(t => !t.completed);
+        break;
+      case 'completed': 
+        result = tasks.filter(t => t.completed);
+        break;
+      default: 
+        result = tasks;
     }
-  }, [tasks, filter]);
+    // Apply sorting after filtering
+    return sortTasks(result, sortOption);
+  }, [tasks, filter, sortOption]);
 
   // CRUD operations use getBaseUrl lazily to avoid TDZ and always read latest env at runtime.
-  const addTask = useCallback(async (text) => {
-    const newTask = { id: genId(), text, completed: false };
+  // Extended to support optional dueDate field.
+  const addTask = useCallback(async (text, dueDate = null) => {
+    const newTask = { 
+      id: genId(), 
+      text, 
+      completed: false,
+      ...(dueDate && { dueDate })
+    };
     setTasks(prev => [newTask, ...prev]);
 
     const baseUrl = getBaseUrl();
@@ -149,6 +225,8 @@ export function useTasks() {
     filtered,
     filter,
     setFilter,
+    sortOption,
+    setSortOption,
     addTask,
     toggleTask,
     deleteTask,

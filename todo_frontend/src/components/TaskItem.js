@@ -26,15 +26,66 @@ const CancelIcon = () => (
 );
 
 /**
+ * Format date for display in a readable format
+ */
+function formatDueDate(isoString) {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dueDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  
+  const diffTime = dueDay - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+  
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/**
+ * Get due date status: 'overdue', 'due-soon' (within 24h), or null
+ */
+function getDueDateStatus(isoString) {
+  if (!isoString) return null;
+  const dueDate = new Date(isoString);
+  const now = new Date();
+  const diffMs = dueDate - now;
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  if (diffHours < 0) return 'overdue';
+  if (diffHours <= 24) return 'due-soon';
+  return null;
+}
+
+/**
+ * Convert ISO string to date input format (YYYY-MM-DD)
+ */
+function toDateInputValue(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * PUBLIC_INTERFACE
- * TaskItem renders a single task with actions: toggle complete, inline edit, modal edit, and delete.
+ * TaskItem renders a single task with actions: toggle complete, inline edit, modal edit, delete, and due date display/edit.
  */
 export default function TaskItem({ task, animationState = 'entered', onToggle, onDelete, onUpdate }) {
-  /** Accessible inline editing with fallback modal for detailed edits and icon-based actions. */
+  /** Accessible inline editing with due date support, fallback modal for detailed edits, and icon-based actions. */
   const [isEditing, setIsEditing] = useState(false);
   const [isModal, setIsModal] = useState(false);
   const [text, setText] = useState(task.text);
+  const [dueDate, setDueDate] = useState(toDateInputValue(task.dueDate));
   const inputRef = useRef(null);
+
+  const dueDateStatus = getDueDateStatus(task.dueDate);
+  const formattedDueDate = formatDueDate(task.dueDate);
 
   useEffect(() => {
     if (isEditing && inputRef.current) inputRef.current.focus();
@@ -45,13 +96,29 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
     const trimmed = text.trim();
     if (!trimmed) {
       setText(task.text);
+      setDueDate(toDateInputValue(task.dueDate));
       setIsEditing(false);
       setIsModal(false);
       return;
     }
+    
+    const updates = {};
     if (trimmed !== task.text) {
-      onUpdate(task.id, { text: trimmed });
+      updates.text = trimmed;
     }
+    
+    // Convert date input value to ISO string or null
+    const newDueDateISO = dueDate ? new Date(dueDate).toISOString() : null;
+    const currentDueDate = task.dueDate || null;
+    
+    if (newDueDateISO !== currentDueDate) {
+      updates.dueDate = newDueDateISO;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      onUpdate(task.id, updates);
+    }
+    
     setIsEditing(false);
     setIsModal(false);
   };
@@ -62,7 +129,7 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
         className="task-item" 
         data-animation-state={animationState}
         role="listitem" 
-        aria-label={`Task: ${task.text}`}
+        aria-label={`Task: ${task.text}${formattedDueDate ? `, Due: ${formattedDueDate}` : ''}`}
       >
         <div className="left">
           <input
@@ -72,39 +139,60 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
             onChange={() => onToggle(task.id)}
             aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
           />
-          {isEditing ? (
-            <form onSubmit={submitEdit} className="inline-edit-form">
-              <label htmlFor={`edit-${task.id}`} className="visually-hidden">Edit task</label>
-              <input
-                id={`edit-${task.id}`}
-                ref={inputRef}
-                type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="input inline"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setText(task.text);
-                    setIsEditing(false);
-                  }
-                }}
-              />
-            </form>
-          ) : (
-            <label
-              htmlFor={`chk-${task.id}`}
-              className={`task-text ${task.completed ? 'completed' : ''}`}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onToggle(task.id);
-                }
-              }}
-            >
-              {task.text}
-            </label>
-          )}
+          <div className="task-content">
+            {isEditing ? (
+              <form onSubmit={submitEdit} className="inline-edit-form">
+                <label htmlFor={`edit-${task.id}`} className="visually-hidden">Edit task</label>
+                <input
+                  id={`edit-${task.id}`}
+                  ref={inputRef}
+                  type="text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  className="input inline"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setText(task.text);
+                      setDueDate(toDateInputValue(task.dueDate));
+                      setIsEditing(false);
+                    }
+                  }}
+                />
+                <label htmlFor={`edit-date-${task.id}`} className="visually-hidden">Edit due date</label>
+                <input
+                  id={`edit-date-${task.id}`}
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="input inline date-input-inline"
+                  aria-label="Edit due date"
+                />
+              </form>
+            ) : (
+              <>
+                <label
+                  htmlFor={`chk-${task.id}`}
+                  className={`task-text ${task.completed ? 'completed' : ''}`}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onToggle(task.id);
+                    }
+                  }}
+                >
+                  {task.text}
+                </label>
+                {formattedDueDate && (
+                  <div className={`due-date ${dueDateStatus || ''}`} aria-label={`Due date: ${formattedDueDate}`}>
+                    {dueDateStatus === 'overdue' && <span className="due-indicator overdue-indicator" aria-hidden="true">●</span>}
+                    {dueDateStatus === 'due-soon' && <span className="due-indicator due-soon-indicator" aria-hidden="true">●</span>}
+                    <span className="due-date-text">{formattedDueDate}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
         <div className="actions">
           {isEditing ? (
@@ -122,6 +210,7 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
                 className="btn small"
                 onClick={() => {
                   setText(task.text);
+                  setDueDate(toDateInputValue(task.dueDate));
                   setIsEditing(false);
                 }}
                 aria-label="Cancel edit"
@@ -148,6 +237,7 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
                   setIsModal(true);
                   setIsEditing(false);
                   setText(task.text);
+                  setDueDate(toDateInputValue(task.dueDate));
                 }}
                 aria-label="Open edit modal"
                 title="Edit in modal"
@@ -187,6 +277,17 @@ export default function TaskItem({ task, animationState = 'entered', onToggle, o
                 className="input"
                 autoFocus
               />
+              
+              <label htmlFor={`modal-date-${task.id}`} className="label">Due date (optional)</label>
+              <input
+                id={`modal-date-${task.id}`}
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="input"
+                aria-label="Set due date"
+              />
+              
               <div className="modal-actions">
                 <button type="submit" className="btn success">Save</button>
                 <button type="button" className="btn" onClick={() => setIsModal(false)}>Cancel</button>

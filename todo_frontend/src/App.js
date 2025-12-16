@@ -4,6 +4,7 @@ import './todo.css';
 import Header from './components/Header';
 import TaskInput from './components/TaskInput';
 import Filters from './components/Filters';
+import SortControl from './components/SortControl';
 import TaskList from './components/TaskList';
 import { useTasks } from './hooks/useTasks';
 
@@ -15,6 +16,8 @@ export default function App() {
     filtered,
     filter,
     setFilter,
+    sortOption,
+    setSortOption,
     addTask,
     toggleTask,
     deleteTask,
@@ -45,7 +48,10 @@ export default function App() {
         <section className="panel" aria-labelledby="task-input-title">
           <h2 id="task-input-title" className="visually-hidden">Add task</h2>
           <TaskInput onAdd={addTask} />
-          <Filters current={filter} onChange={setFilter} />
+          <div className="controls-row">
+            <Filters current={filter} onChange={setFilter} />
+            <SortControl current={sortOption} onChange={setSortOption} />
+          </div>
         </section>
 
         <section className="panel list-panel" aria-labelledby="task-list-title">
