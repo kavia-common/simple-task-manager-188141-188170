@@ -257,6 +257,73 @@ html, body, #root {
   background: var(--surface);
   border: 1px solid transparent;
   transition: all var(--transition-base);
+  /* Animation properties */
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  max-height: 200px;
+  overflow: hidden;
+}
+
+/* Enter animation - initial state */
+.task-item[data-animation-state="entering"] {
+  opacity: 0;
+  transform: translateX(-20px) scale(0.95);
+  max-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Entered state - smooth transition */
+.task-item[data-animation-state="entered"] {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  max-height: 200px;
+  transition: opacity var(--transition-slow), 
+              transform var(--transition-slow),
+              max-height var(--transition-slow),
+              margin var(--transition-slow),
+              padding var(--transition-slow),
+              background var(--transition-base),
+              border-color var(--transition-base),
+              box-shadow var(--transition-base);
+}
+
+/* Exit animation */
+.task-item[data-animation-state="exiting"] {
+  opacity: 0;
+  transform: translateX(20px) scale(0.95);
+  max-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: opacity var(--transition-slow), 
+              transform var(--transition-slow),
+              max-height var(--transition-slow),
+              margin var(--transition-slow),
+              padding var(--transition-slow);
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .task-item {
+    transition: background var(--transition-base), 
+                border-color var(--transition-base),
+                box-shadow var(--transition-base);
+  }
+  
+  .task-item[data-animation-state="entering"],
+  .task-item[data-animation-state="entered"],
+  .task-item[data-animation-state="exiting"] {
+    opacity: 1;
+    transform: none;
+    max-height: none;
+    transition: none;
+  }
+  
+  .task-item[data-animation-state="exiting"] {
+    display: none;
+  }
 }
 
 .task-item:hover {

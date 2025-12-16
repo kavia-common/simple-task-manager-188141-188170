@@ -29,7 +29,7 @@ const CancelIcon = () => (
  * PUBLIC_INTERFACE
  * TaskItem renders a single task with actions: toggle complete, inline edit, modal edit, and delete.
  */
-export default function TaskItem({ task, onToggle, onDelete, onUpdate }) {
+export default function TaskItem({ task, animationState = 'entered', onToggle, onDelete, onUpdate }) {
   /** Accessible inline editing with fallback modal for detailed edits and icon-based actions. */
   const [isEditing, setIsEditing] = useState(false);
   const [isModal, setIsModal] = useState(false);
@@ -58,7 +58,12 @@ export default function TaskItem({ task, onToggle, onDelete, onUpdate }) {
 
   return (
     <>
-      <li className="task-item" role="listitem" aria-label={`Task: ${task.text}`}>
+      <li 
+        className="task-item" 
+        data-animation-state={animationState}
+        role="listitem" 
+        aria-label={`Task: ${task.text}`}
+      >
         <div className="left">
           <input
             id={`chk-${task.id}`}
