@@ -1,82 +1,58 @@
-# Lightweight React Template for KAVIA
+# Simple Todo Frontend (React)
 
-This project provides a minimal React template with a clean, modern UI and minimal dependencies.
+A modern, lightweight React todo app with add, edit (inline or modal), delete, complete toggle, filters, and localStorage persistence. Optionally reads REACT_APP_API_BASE to sync with a backend if provided.
 
 ## Features
 
-- **Lightweight**: No heavy UI frameworks - uses only vanilla CSS and React
-- **Modern UI**: Clean, responsive design with KAVIA brand styling
-- **Fast**: Minimal dependencies for quick loading times
-- **Simple**: Easy to understand and modify
+- Add tasks
+- Edit tasks inline or via modal
+- Delete tasks
+- Toggle complete
+- Filter by All / Active / Completed
+- Persist to localStorage by default
+- Optional API integration via `REACT_APP_API_BASE` (graceful fallback to local)
+- Accessible (labels, keyboard support)
+- Responsive layout and light/dark theme toggle
 
 ## Getting Started
 
-In the project directory, you can run:
+Install dependencies and start the dev server:
 
-### `npm start`
+- npm install
+- npm start
 
-Runs the app in development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The app runs at http://localhost:3000
 
-### `npm test`
+## Environment Variables
 
-Launches the test runner in interactive watch mode.
+The app will operate fully without any backend. If you have an API, define:
 
-### `npm run build`
+- REACT_APP_API_BASE: Base URL for the tasks API (optional)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Other variables present in the template are respected by CRA but not required for this app:
+REACT_APP_BACKEND_URL, REACT_APP_FRONTEND_URL, REACT_APP_WS_URL, REACT_APP_NODE_ENV, REACT_APP_NEXT_TELEMETRY_DISABLED, REACT_APP_ENABLE_SOURCE_MAPS, REACT_APP_PORT, REACT_APP_TRUST_PROXY, REACT_APP_LOG_LEVEL, REACT_APP_HEALTHCHECK_PATH, REACT_APP_FEATURE_FLAGS, REACT_APP_EXPERIMENTS_ENABLED
 
-## Customization
+Create a .env.local (optional) for local overrides, e.g.:
+REACT_APP_API_BASE=http://localhost:8080
 
-### Colors
+## API Contract (Optional)
 
-The main brand colors are defined as CSS variables in `src/App.css`:
+If REACT_APP_API_BASE is set, the app will try to call:
+- GET /tasks -> returns an array of tasks [{ id, text, completed }]
+- POST /tasks -> create a task with body of the new task
+- PATCH /tasks/:id/toggle -> toggle complete
+- PATCH /tasks/:id -> update fields, e.g. { text }
+- DELETE /tasks/:id -> delete a task
 
-```css
-:root {
-  --kavia-orange: #E87A41;
-  --kavia-dark: #1A1A1A;
-  --text-color: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(255, 255, 255, 0.1);
-}
-```
+Failures are ignored and local state remains the source of truth.
 
-### Components
+## Scripts
 
-This template uses pure HTML/CSS components instead of a UI framework. You can find component styles in `src/App.css`. 
+- npm start: Start dev server
+- npm test: Run tests
+- npm run build: Production build
 
-Common components include:
-- Buttons (`.btn`, `.btn-large`)
-- Container (`.container`)
-- Navigation (`.navbar`)
-- Typography (`.title`, `.subtitle`, `.description`)
+## Notes
 
-## Learn More
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- All configuration should be added via environment variables. Do not hardcode secrets.
+- This app is self-contained and does not require changes to the preview system.
