@@ -2,6 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'kavia_todo_tasks_v1';
 
+/**
+ * Returns a safe API base URL if provided via env; otherwise an empty string.
+ * Trims a single trailing slash to make path joining predictable.
+ */
+function getBaseUrl() {
+  const raw = process.env.REACT_APP_API_BASE || '';
+  return raw ? raw.replace(/\/$/, '') : '';
+}
+
 function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -29,8 +38,7 @@ function genId() {
  */
 export function useTasks() {
   /** Provides tasks state and CRUD operations with filter support. */
-  const API_BASE = process.env.REACT_APP_API_BASE || '';
-  const apiEnabled = !!API_BASE;
+  const apiEnabled = !!getBaseUrl();
 
   const [tasks, setTasks] = useState(() => loadLocal());
   const [filter, setFilter] = useState('all');
@@ -40,7 +48,8 @@ export function useTasks() {
   useEffect(() => {
     let isMounted = true;
     async function fetchTasks() {
-      if (!apiEnabled) return;
+      const baseUrl = getBaseUrl();
+      if (!baseUrl) return;
       setLoading(true);
       try {
         const res = await fetch(`${baseUrl}/tasks`);
@@ -58,7 +67,7 @@ export function useTasks() {
     }
     fetchTasks();
     return () => { isMounted = false; };
-  }, [baseUrl, apiEnabled]);
+  }, [apiEnabled]);
 
   // Persist to localStorage whenever tasks change
   useEffect(() => {
@@ -73,15 +82,13 @@ export function useTasks() {
     }
   }, [tasks, filter]);
 
-  // CRUD operations
-  // Helper to safely build URLs by trimming a single trailing slash
-  const baseUrl = API_BASE ? API_BASE.replace(/\/$/, '') : '';
-
+  // CRUD operations use getBaseUrl lazily to avoid TDZ and always read latest env at runtime.
   const addTask = useCallback(async (text) => {
     const newTask = { id: genId(), text, completed: false };
     setTasks(prev => [newTask, ...prev]);
 
-    if (apiEnabled) {
+    const baseUrl = getBaseUrl();
+    if (baseUrl) {
       try {
         await fetch(`${baseUrl}/tasks`, {
           method: 'POST',
@@ -92,33 +99,39 @@ export function useTasks() {
         // ignore API failures; local already updated
       }
     }
-  }, [baseUrl, apiEnabled]);
+  }, []);
 
   const toggleTask = useCallback(async (id) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-    if (apiEnabled) {
+
+    const baseUrl = getBaseUrl();
+    if (baseUrl) {
       try {
         await fetch(`${baseUrl}/tasks/${id}/toggle`, { method: 'PATCH' });
       } catch {
         // ignore
       }
     }
-  }, [baseUrl, apiEnabled]);
+  }, []);
 
   const deleteTask = useCallback(async (id) => {
     setTasks(prev => prev.filter(t => t.id !== id));
-    if (apiEnabled) {
+
+    const baseUrl = getBaseUrl();
+    if (baseUrl) {
       try {
         await fetch(`${baseUrl}/tasks/${id}`, { method: 'DELETE' });
       } catch {
         // ignore
       }
     }
-  }, [baseUrl, apiEnabled]);
+  }, []);
 
   const updateTask = useCallback(async (id, updates) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-    if (apiEnabled) {
+
+    const baseUrl = getBaseUrl();
+    if (baseUrl) {
       try {
         await fetch(`${baseUrl}/tasks/${id}`, {
           method: 'PATCH',
@@ -129,7 +142,7 @@ export function useTasks() {
         // ignore
       }
     }
-  }, [baseUrl, apiEnabled]);
+  }, []);
 
   return {
     tasks,
