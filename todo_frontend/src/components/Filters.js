@@ -8,10 +8,10 @@ const FILTERS = [
 
 /**
  * PUBLIC_INTERFACE
- * Filters renders filter controls to view tasks by status.
+ * Filters renders pill-style filter controls to view tasks by status.
  */
 export default function Filters({ current, onChange }) {
-  /** Renders set of filter buttons with aria-pressed for accessibility. */
+  /** Renders set of filter buttons with enhanced keyboard support and aria-pressed for accessibility. */
   return (
     <div className="filters" role="group" aria-label="Task filters">
       {FILTERS.map((f) => (
@@ -21,6 +21,12 @@ export default function Filters({ current, onChange }) {
           className={`chip ${current === f.id ? 'chip-active' : ''}`}
           aria-pressed={current === f.id}
           onClick={() => onChange(f.id)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onChange(f.id);
+            }
+          }}
         >
           {f.label}
         </button>
